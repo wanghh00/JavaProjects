@@ -4,7 +4,8 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicLong;
 
-import org.json.JSONObject;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -35,6 +36,16 @@ public class GreetingController {
 		Map<String, Object> ret = new HashMap<String, Object>();
 		ret.put("a", 123);
 		ret.put("b", qstr);
+		return ret;
+	}
+	
+	@PostMapping("/post")
+	@ResponseBody
+	public Map<String, Object> postReq(@RequestBody Map<String, Object> requst) {
+		System.out.println(requst);
+		Map<String, Object> ret = new HashMap<String, Object>();
+		ret.put("a", 123);
+		ret.put("b", "hehe");
 		return ret;
 	}
 }
