@@ -13,6 +13,7 @@ import com.mysql.cj.jdbc.MysqlDataSource;
 
 import offline.MySqlIndexer;
 import offline.RawDataFile;
+import utils.ByteUtils;
 
 public class MySqlSearcher {
 	static final Logger LOG = Logger.getLogger(MySqlSearcher.class);
@@ -51,7 +52,7 @@ public class MySqlSearcher {
 		
 		byte[] embedding = (byte[]) fileret.get("embedding");
 		
-		LOG.info(embedding.toString());
+		LOG.info(ByteUtils.bytesToHex(embedding));
 		LOG.info(fileret);
 		
 		file.close();

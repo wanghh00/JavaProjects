@@ -8,6 +8,7 @@ import java.util.Map;
 
 import org.apache.log4j.Logger;
 
+import utils.ItemFeature;
 import utils.MMapFile;
 
 public class RawDataFile implements AutoCloseable {
@@ -17,11 +18,10 @@ public class RawDataFile implements AutoCloseable {
 	
 	private MMapFile mapfile;
 	private RandomAccessFile infile;
-	private MappedByteBuffer buffer;
 	private long filelength;
 	private long idx = 0;
 	
-	private int EMBEDDING_SIZE = 4096;
+	private static int EMBEDDING_SIZE = 4096;
 	private int recordSize = 8 + 4 + EMBEDDING_SIZE;
 	private byte[] embedding = new byte[EMBEDDING_SIZE];
 	
@@ -42,9 +42,22 @@ public class RawDataFile implements AutoCloseable {
 		this(String.format(FILE_PATH, part, category));
 	}
 	
+	public RawDataFile enableMmapMode() {
+		// mapfile.enableMmapMode().load();
+		mapfile.enableMmapMode();
+		return this;
+	}
+	
+	public RawDataFile enableMmapModeAndLoad() {
+		mapfile.enableMmapMode().load();
+		//mapfile.enableMmapMode();
+		return this;
+	}
+	
 	public boolean hasNext() {
 		try {
-			return infile.getFilePointer() + recordSize <= filelength;
+			//return infile.getFilePointer() + recordSize <= filelength;
+			return mapfile.getFilePointer() + recordSize <= filelength;
 		} catch (IOException e) {
 			LOG.error("", e);
 			return false;
@@ -58,10 +71,21 @@ public class RawDataFile implements AutoCloseable {
 		return ret;
 	}
 	
+	public void nextItemFeature(ItemFeature feature) {
+		try {
+			feature.itemId = mapfile.readLong();
+			feature.category = mapfile.readInt();
+			mapfile.read(feature.embedding);
+		} catch (IOException e) {
+			LOG.error("", e);
+		}
+	}
+	
 	public Map<String, Object> get(long idx) {
 		Map<String, Object> ret = null;
 		try {
-			infile.seek(idx*recordSize);
+			// infile.seek(idx*recordSize);
+			mapfile.seek(idx*recordSize);
 			ret = readOne();
 			ret.put("_id", idx);
 		} catch (IOException e) {
@@ -70,17 +94,26 @@ public class RawDataFile implements AutoCloseable {
 		return ret;
 	}
 	
+	public void getItemFeature(long idx, ItemFeature feature) {
+		try {
+			mapfile.seek(idx*recordSize);
+			nextItemFeature(feature);
+		} catch (IOException e) {
+			LOG.error("", e);
+		}
+	}
+	
 	public void close() {
 		mapfile.close();
 	}
 	
-	private Map<String, Object> readBufferOne() {
+	private Map<String, Object> readOne() {
 		record.clear();
 		
 		try {
-			record.put("itemid", buffer.getLong());
-			record.put("category", buffer.getInt());
-			infile.read(embedding);
+			record.put("itemid", mapfile.readLong());
+			record.put("category", mapfile.readInt());
+			mapfile.read(embedding);
 			record.put("embedding", embedding);
 			
 			return record;
@@ -90,7 +123,7 @@ public class RawDataFile implements AutoCloseable {
 		}
 	}
 	
-	private Map<String, Object> readOne() {
+	private Map<String, Object> readOneOld() {
 		record.clear();
 		
 		try {

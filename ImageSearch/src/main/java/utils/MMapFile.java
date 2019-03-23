@@ -17,6 +17,7 @@ public class MMapFile implements AutoCloseable {
 	private File file;
 	private RandomAccessFile fileput;
 	private MappedByteBuffer buffer;
+	private boolean mmapmode = false;
 	private String mode = "r";
 
 	public MMapFile(String path) {
@@ -45,12 +46,6 @@ public class MMapFile implements AutoCloseable {
 	}
 	
 	public MappedByteBuffer asByteBuffer() {
-		FileChannel fileChannel = fileput.getChannel();
-		try {
-			buffer = fileChannel.map(FileChannel.MapMode.READ_ONLY, 0, fileChannel.size());
-		} catch (IOException e) {
-			LOG.error("", e);
-		}
 		return buffer;
 	}
 	
@@ -58,9 +53,57 @@ public class MMapFile implements AutoCloseable {
 		return fileput;
 	}
 	
+	synchronized public MMapFile enableMmapMode() {
+		if (buffer == null) {
+			FileChannel fileChannel = fileput.getChannel();
+			try {
+				buffer = fileChannel.map(FileChannel.MapMode.READ_ONLY, 0, fileChannel.size());
+				LOG.info("MMapMode enabled");
+			} catch (IOException e) {
+				LOG.error("", e);
+			}
+		}
+		mmapmode = buffer != null;
+		return this;
+	}
+	
+	public MMapFile load() {
+		if (mmapmode == true && buffer.isLoaded() == false) {
+			buffer.force();
+			buffer.load();
+			LOG.info("MMap loaded");
+		}
+		return this;
+	}
+	
+	public long readLong() throws IOException {
+		return mmapmode ? buffer.getLong() : fileput.readLong();
+	}
+	
+	public int readInt() throws IOException {
+		return mmapmode ? buffer.getInt() : fileput.readInt();
+	}
+	
+	public void read(byte[] dst) throws IOException {
+		if (mmapmode) buffer.get(dst);
+		else fileput.read(dst);
+	} 
+	
+	public void seek(long pos) throws IOException {
+		if (mmapmode) buffer.position((int) pos);
+		else fileput.seek(pos);
+	}
+	
+	public long getFilePointer() throws IOException {
+		return mmapmode ? buffer.position() : fileput.getFilePointer();
+	}
+	
 	public void close() {
 		try {
-			buffer = null;
+			if (buffer != null) {
+				buffer.force();
+				buffer = null;
+			}
 			fileput.close();
 		} catch (IOException e) {
 			LOG.error("", e);

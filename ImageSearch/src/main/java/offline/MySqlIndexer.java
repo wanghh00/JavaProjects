@@ -16,6 +16,8 @@ import org.apache.log4j.Logger;
 
 import com.mysql.cj.jdbc.MysqlDataSource;
 
+import online.ItemComparator;
+import utils.ItemFeature;
 import utils.MMapFile;
 
 public class MySqlIndexer {
@@ -57,34 +59,54 @@ public class MySqlIndexer {
 	
 	public static void walkThroughBinFile(String path) {
 		RawDataFile datafile = new RawDataFile(path);
+		datafile.enableMmapMode();
+		
+		ItemFeature feature = new ItemFeature();
+		
 		Set<Long> set = new HashSet<Long>();
 		int dupnum = 0;
 		
+		ItemFeature src = new ItemFeature();
+		datafile.getItemFeature(10, src);
+		
+		ItemComparator.Compare comp = new ItemComparator.HammingDist();
+		
+		long start = System.currentTimeMillis();
+		int idx = 0;
+		
 		while (datafile.hasNext()) {
-			Map<String, Object> one = datafile.next();
-			long idx = (long) one.get("_id");
-			Long itemid = (Long) one.get("itemid");
+			datafile.nextItemFeature(feature);
+			float sim = comp.similarity(src.embedding, feature.embedding);
+			idx++;
+			//Map<String, Object> one = datafile.next();
 			
-			boolean notexist = set.add(itemid);
-			if (notexist == false) {
-				LOG.info("HAHA " + itemid);
-				dupnum++;
-			}
-			
+//			long idx = (long) one.get("_id");
+//			Long itemid = (Long) one.get("itemid");
+//			
+//			boolean notexist = set.add(itemid);
+//			if (notexist == false) {
+//				//LOG.info("HAHA " + itemid);
+//				dupnum++;
+//			}
+//			
+			//LOG.info(idx);
 			if (idx % 1000 == 0) {
-				LOG.info(String.format("%s %s %s", idx, one.get("itemid"), one.get("category")));
+				// LOG.info(String.format("%s %s %s", idx, one.get("itemid"), one.get("category")));
+				LOG.info("Sim: " + sim);
 			}
 		}
+		LOG.info("Running time: " + (System.currentTimeMillis() - start));
 		LOG.info("DupNum: " + dupnum);
+		
 		datafile.close();
 	}
 	
-	public static void main3(String[] args) {
+	public static void main(String[] args) {
 		String path = "/Users/hongwang/Downloads/cvswedb_1_0.bin";
 		walkThroughBinFile(path);
 	}
 	
-	public static void main(String[] args) {
+	public static void main2(String[] args) {
 		// String path = "/Users/hongwang/Downloads/cvswedb_0_2.bin";
 		// walkThroughBinFile(path);
 		//indexRawDataEmbedding(path, 0);
