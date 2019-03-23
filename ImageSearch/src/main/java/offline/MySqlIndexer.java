@@ -7,16 +7,20 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
+import java.util.concurrent.ForkJoinPool;
 
 import org.apache.log4j.Logger;
 
 import com.mysql.cj.jdbc.MysqlDataSource;
 
 import online.ItemComparator;
+import online.ItemSearchTask;
 import utils.ItemFeature;
 import utils.MMapFile;
 
@@ -101,7 +105,50 @@ public class MySqlIndexer {
 		datafile.close();
 	}
 	
+	public static float doItemSearchTask(ItemSearchTask task) {
+		long start = System.currentTimeMillis();
+		ItemFeature feature = new ItemFeature();
+		float sim = 0.0f;
+		
+		while (task.datafile.hasNext()) {
+			task.datafile.nextItemFeature(feature);
+			sim = task.comp.similarity(task.src.embedding, feature.embedding);
+		}
+		LOG.info(Thread.currentThread().getName() + " Running time: " + (System.currentTimeMillis() - start));
+		return sim;
+	}
+	
+	public static void searchInParallel() {
+		String path = "/Users/hongwang/Downloads/cvswedb_0_0.bin";
+		String path1 = "/Users/hongwang/Downloads/cvswedb_1_0.bin";
+		String path2 = "/Users/hongwang/Downloads/cvswedb_2_0.bin";
+		
+		RawDataFile datafile = new RawDataFile(path);
+		datafile.enableMmapMode();
+		RawDataFile datafile1 = new RawDataFile(path1);
+		datafile1.enableMmapMode();
+		RawDataFile datafile2 = new RawDataFile(path2);
+		datafile2.enableMmapMode();
+		
+		ItemFeature src = new ItemFeature();
+		datafile.getItemFeature(10, src);
+		
+		List<ItemSearchTask> searchTasks = new ArrayList<ItemSearchTask>();
+		searchTasks.add(new ItemSearchTask(datafile, src, new ItemComparator.HammingDist(), 100));
+		searchTasks.add(new ItemSearchTask(datafile1, src, new ItemComparator.HammingDist(), 100));
+		searchTasks.add(new ItemSearchTask(datafile2, src, new ItemComparator.HammingDist(), 100));
+		
+		searchTasks.parallelStream().forEach(task -> doItemSearchTask(task));
+		
+		// ForkJoinPool threadPool = new ForkJoinPool(4);
+	}
+	
 	public static void main(String[] args) {
+		LOG.info(ForkJoinPool.getCommonPoolParallelism());
+		searchInParallel();
+	}
+	
+	public static void main3(String[] args) {
 		String path = "/Users/hongwang/Downloads/cvswedb_1_0.bin";
 		walkThroughBinFile(path);
 	}
