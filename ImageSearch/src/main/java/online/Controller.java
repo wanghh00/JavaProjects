@@ -14,12 +14,13 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.bind.annotation.RestController;
 
-import utils.ByteUtils;
 import utils.ItemFeature;
 
 @RestController
 public class Controller {
 	static final Logger LOG = Logger.getLogger(Controller.class);
+	
+	static final String IMG_URL_TEMPLATE = "http://37fee.http.sjc01.cdn.softlayer.net/cvswe/img/%s.jpg";
 
 	private static ItemSearchScheduler Scheduler;
 
@@ -30,6 +31,8 @@ public class Controller {
 	@PostMapping("/imgsch")
 	@ResponseBody
 	public Map<String, Object> search(@RequestBody Map<String, Object> requst) {
+		long start = System.currentTimeMillis();
+		
 		LOG.info(requst);
 		Map<String, Object> ret = new HashMap<String, Object>();
 
@@ -57,16 +60,18 @@ public class Controller {
 				
 				obj.put("itemId", one.itemId);
 				obj.put("score", one.sim);
+				obj.put("imageUrl", String.format(IMG_URL_TEMPLATE, one.itemId));
 				resultLst.add(obj);
 			}
 			
 			Map<String, Object> item = new HashMap<String, Object>();
 			item.put("itemId", itemId);
 			item.put("category", category);
+			item.put("imageUrl", String.format(IMG_URL_TEMPLATE, itemId));
 			
 			ret.put("item", item);
 			ret.put("results", resultLst);
-
+			ret.put("time", System.currentTimeMillis() - start);
 		} catch (RuntimeException e) {
 			LOG.error("", e);
 			ret.clear();
