@@ -21,13 +21,14 @@ public class MySqlSearcher {
 	public static Map<String, Object> getItemMeta(long itemId) {
 		MysqlDataSource ds = MySqlIndexer.getMySQLDataSource();
 		Map<String, Object> ret = null;
+		ResultSet result = null;
 
 		String query = "SELECT * FROM ItemEmbedding WHERE ItemId = ? LIMIT 1";
 		try (Connection conn = ds.getConnection(); PreparedStatement preparedStmt = conn.prepareStatement(query)) {
 			
 			preparedStmt.setLong(1, itemId);
 			
-			ResultSet result = preparedStmt.executeQuery();
+			result = preparedStmt.executeQuery();
 			if (result.next()) {
 				ret = new HashMap<String, Object>();
 				ret.put("itemid", itemId);
@@ -35,9 +36,14 @@ public class MySqlSearcher {
 				ret.put("category", result.getInt(3));
 				ret.put("offset", result.getLong(4));
 			}
-			result.close();
 		} catch (SQLException ex) {
 			LOG.error("", ex);
+		} finally {
+			try {
+				result.close();
+			} catch (SQLException e) {
+				LOG.error("", e);
+			}
 		}
 		return ret;
 	}

@@ -9,13 +9,12 @@ import utils.ByteUtils;
 public class ItemComparator {
 	static final Logger LOG = Logger.getLogger(ItemComparator.class);
 	
-	static byte[] NUM_SETS = new byte[256];
-
+	static byte[] HAMMING_DIST_NUM_SETS = new byte[256];
 	static int EMBEDDING_SIZE = 4096;
 
 	static {
 		for (int x = 0; x < 256; x++) {
-			NUM_SETS[x] = (byte) (8 - ByteUtils.countSetBits(x));
+			HAMMING_DIST_NUM_SETS[x] = (byte) (8 - ByteUtils.countSetBits(x));
 		}
 	}
 	
@@ -24,6 +23,18 @@ public class ItemComparator {
 	}
 	
 	public static class HammingDist implements Compare {
+		private static HammingDist hammingSim;
+
+		public static HammingDist getInstance() {
+			if (hammingSim == null) {
+				synchronized (HammingDist.class) {
+					if (hammingSim == null) {
+						hammingSim = new HammingDist();
+					}
+				}
+			}
+			return hammingSim;
+		}
 
 		@Override
 		public float similarity(byte[] src, byte[] dst) {
@@ -36,7 +47,7 @@ public class ItemComparator {
 		for (int x = 0; x < src.length; x++) {
 			// LOG.info(String.format("%s vs %s", ByteUtils.bytesToHex(src[x]), ByteUtils.bytesToHex(dst[x])));
 			// LOG.info(String.format("%s vs %s = %s", ByteUtils.bytesToHex(src[x]), ByteUtils.bytesToHex(dst[x]), tmp.tou));
-			ret += NUM_SETS[Byte.toUnsignedInt((byte) (src[x] ^ dst[x]))];
+			ret += HAMMING_DIST_NUM_SETS[Byte.toUnsignedInt((byte) (src[x] ^ dst[x]))];
 		}
 		return ret;
 	}

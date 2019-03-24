@@ -2,7 +2,6 @@ package offline;
 
 import java.io.IOException;
 import java.io.RandomAccessFile;
-import java.nio.MappedByteBuffer;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -98,6 +97,14 @@ public class RawDataFile implements AutoCloseable {
 		try {
 			mapfile.seek(idx*recordSize);
 			nextItemFeature(feature);
+		} catch (IOException e) {
+			LOG.error("", e);
+		}
+	}
+	
+	public void reset() {
+		try {
+			mapfile.seek(0);
 		} catch (IOException e) {
 			LOG.error("", e);
 		}

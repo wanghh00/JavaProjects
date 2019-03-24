@@ -58,10 +58,12 @@ public class MMapFile implements AutoCloseable {
 			FileChannel fileChannel = fileput.getChannel();
 			try {
 				buffer = fileChannel.map(FileChannel.MapMode.READ_ONLY, 0, fileChannel.size());
-				LOG.info("MMapMode enabled");
+				LOG.info("MMapMode enabled " + buffer);
 			} catch (IOException e) {
 				LOG.error("", e);
 			}
+		} else {
+			LOG.info("MMapMode was enabled " + buffer);
 		}
 		mmapmode = buffer != null;
 		return this;

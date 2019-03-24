@@ -2,15 +2,17 @@ package offline;
 
 import java.io.FileInputStream;
 import java.io.IOException;
-import java.io.RandomAccessFile;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
+import java.util.PriorityQueue;
 import java.util.Properties;
 import java.util.Set;
 import java.util.concurrent.ForkJoinPool;
@@ -20,9 +22,9 @@ import org.apache.log4j.Logger;
 import com.mysql.cj.jdbc.MysqlDataSource;
 
 import online.ItemComparator;
+import online.ItemSearchResult;
 import online.ItemSearchTask;
 import utils.ItemFeature;
-import utils.MMapFile;
 
 public class MySqlIndexer {
 	static final Logger LOG = Logger.getLogger(MySqlIndexer.class);
@@ -105,17 +107,36 @@ public class MySqlIndexer {
 		datafile.close();
 	}
 	
-	public static float doItemSearchTask(ItemSearchTask task) {
+	public static PriorityQueue<ItemSearchResult> mapItemSearchTask(ItemSearchTask task) {
 		long start = System.currentTimeMillis();
 		ItemFeature feature = new ItemFeature();
 		float sim = 0.0f;
 		
+		PriorityQueue<ItemSearchResult> queue = new PriorityQueue<ItemSearchResult>(task.numResult + 1);
+		
 		while (task.datafile.hasNext()) {
 			task.datafile.nextItemFeature(feature);
-			sim = task.comp.similarity(task.src.embedding, feature.embedding);
+			float tmp = task.comp.similarity(task.src.embedding, feature.embedding);
+			ItemSearchResult ret = new ItemSearchResult(feature.itemId, tmp);
+			
+			queue.offer(ret);
+			if (queue.size() > task.numResult) {
+				queue.poll();
+			}
 		}
-		LOG.info(Thread.currentThread().getName() + " Running time: " + (System.currentTimeMillis() - start));
-		return sim;
+		LOG.info(Thread.currentThread().getName() + " " + sim + " Running time: " + (System.currentTimeMillis() - start));
+		
+		return queue;
+	}
+	
+	public static PriorityQueue<ItemSearchResult> reduceItemSearchTask(PriorityQueue<ItemSearchResult> q1, PriorityQueue<ItemSearchResult> q2) {
+		int limit = q1.size();
+		for (ItemSearchResult one : q2) {
+			q1.offer(one);
+			if (q1.size() > limit) q1.poll();
+		}
+		
+		return q1;
 	}
 	
 	public static void searchInParallel() {
@@ -131,14 +152,25 @@ public class MySqlIndexer {
 		datafile2.enableMmapMode();
 		
 		ItemFeature src = new ItemFeature();
-		datafile.getItemFeature(10, src);
+		datafile.getItemFeature(1001, src);
+		
+		ItemComparator.Compare comp = ItemComparator.HammingDist.getInstance();
 		
 		List<ItemSearchTask> searchTasks = new ArrayList<ItemSearchTask>();
-		searchTasks.add(new ItemSearchTask(datafile, src, new ItemComparator.HammingDist(), 100));
-		searchTasks.add(new ItemSearchTask(datafile1, src, new ItemComparator.HammingDist(), 100));
-		searchTasks.add(new ItemSearchTask(datafile2, src, new ItemComparator.HammingDist(), 100));
+		searchTasks.add(new ItemSearchTask(datafile, src, comp, 100));
+		searchTasks.add(new ItemSearchTask(datafile1, src, comp, 100));
+		searchTasks.add(new ItemSearchTask(datafile2, src, comp, 100));
 		
-		searchTasks.parallelStream().forEach(task -> doItemSearchTask(task));
+		Optional<PriorityQueue<ItemSearchResult>> results = searchTasks.parallelStream().map(task -> mapItemSearchTask(task))
+				.reduce((ret1, ret2) -> reduceItemSearchTask(ret1, ret2));
+		// LOG.info("Max" + ret.get());
+		
+		Object[] outlist = results.get().toArray();
+		Arrays.sort(outlist);
+				
+		for (Object ret : outlist) {
+			System.out.println(((ItemSearchResult)ret).sim);
+		}
 		
 		// ForkJoinPool threadPool = new ForkJoinPool(4);
 	}
