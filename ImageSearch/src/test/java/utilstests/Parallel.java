@@ -14,6 +14,7 @@ import java.util.stream.Stream;
 import org.junit.Test;
 
 public class Parallel {
+	
 	@Test
 	public void givenList_whenCallingParallelStream_shouldBeParallelStream() {
 		List<Long> aList = new ArrayList<>();
@@ -36,10 +37,4 @@ public class Parallel {
 
 		assertEquals((lastNum + firstNum) * lastNum / 2, actualTotal);
 	}
-
-	
-	
-	
-	
-	
 }

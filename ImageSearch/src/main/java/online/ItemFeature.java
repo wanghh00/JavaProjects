@@ -1,4 +1,4 @@
-package utils;
+package online;
 
 public class ItemFeature {
 	public final static int EMBEDDING_SIZE = 4096;

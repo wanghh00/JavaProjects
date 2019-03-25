@@ -1,7 +1,6 @@
 package online;
 
 import offline.RawDataFile;
-import utils.ItemFeature;
 
 public class ItemSearchTask {
 	public RawDataFile datafile;

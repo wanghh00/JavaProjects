@@ -12,8 +12,6 @@ import org.apache.log4j.Logger;
 import com.mysql.cj.jdbc.MysqlDataSource;
 
 import offline.MySqlIndexer;
-import offline.RawDataFile;
-import utils.ByteUtils;
 
 public class MySqlSearcher {
 	static final Logger LOG = Logger.getLogger(MySqlSearcher.class);
@@ -25,7 +23,6 @@ public class MySqlSearcher {
 
 		String query = "SELECT * FROM ItemEmbedding WHERE ItemId = ? LIMIT 1";
 		try (Connection conn = ds.getConnection(); PreparedStatement preparedStmt = conn.prepareStatement(query)) {
-			
 			preparedStmt.setLong(1, itemId);
 			
 			result = preparedStmt.executeQuery();
@@ -47,21 +44,4 @@ public class MySqlSearcher {
 		}
 		return ret;
 	}
-	
-	public static void main(String[] args) {
-		long itemid = 302329317684L;
-		Map<String, Object> ret = getItemMeta(itemid);
-		LOG.info(ret);
-		
-		RawDataFile file = new RawDataFile((int) ret.get("part"), (int) ret.get("category"));
-		Map<String, Object> fileret = file.get((long) ret.get("offset"));
-		
-		byte[] embedding = (byte[]) fileret.get("embedding");
-		
-		LOG.info(ByteUtils.bytesToHex(embedding));
-		LOG.info(fileret);
-		
-		file.close();
-	}
-
 }

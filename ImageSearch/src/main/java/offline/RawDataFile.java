@@ -7,7 +7,7 @@ import java.util.Map;
 
 import org.apache.log4j.Logger;
 
-import utils.ItemFeature;
+import online.ItemFeature;
 import utils.MMapFile;
 
 public class RawDataFile implements AutoCloseable {
@@ -28,6 +28,7 @@ public class RawDataFile implements AutoCloseable {
 	
 	public RawDataFile(String path) {
 		mapfile = new MMapFile(path);
+		LOG.info(String.format("Open [%s] as RawDataFile", path));
 		infile = mapfile.open().asRandomAccessFile();
 		
 		try {
@@ -42,14 +43,12 @@ public class RawDataFile implements AutoCloseable {
 	}
 	
 	public RawDataFile enableMmapMode() {
-		// mapfile.enableMmapMode().load();
 		mapfile.enableMmapMode();
 		return this;
 	}
 	
 	public RawDataFile enableMmapModeAndLoad() {
 		mapfile.enableMmapMode().load();
-		//mapfile.enableMmapMode();
 		return this;
 	}
 	
@@ -105,6 +104,7 @@ public class RawDataFile implements AutoCloseable {
 	public void reset() {
 		try {
 			mapfile.seek(0);
+			idx = 0;
 		} catch (IOException e) {
 			LOG.error("", e);
 		}
@@ -121,22 +121,6 @@ public class RawDataFile implements AutoCloseable {
 			record.put("itemid", mapfile.readLong());
 			record.put("category", mapfile.readInt());
 			mapfile.read(embedding);
-			record.put("embedding", embedding);
-			
-			return record;
-		} catch (IOException e) {
-			LOG.error("", e);
-			return null;
-		}
-	}
-	
-	private Map<String, Object> readOneOld() {
-		record.clear();
-		
-		try {
-			record.put("itemid", infile.readLong());
-			record.put("category", infile.readInt());
-			infile.read(embedding);
 			record.put("embedding", embedding);
 			
 			return record;

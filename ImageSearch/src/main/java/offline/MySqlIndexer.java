@@ -4,27 +4,13 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
-import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashSet;
-import java.util.List;
 import java.util.Map;
-import java.util.Optional;
-import java.util.PriorityQueue;
 import java.util.Properties;
-import java.util.Set;
-import java.util.concurrent.ForkJoinPool;
 
 import org.apache.log4j.Logger;
 
 import com.mysql.cj.jdbc.MysqlDataSource;
-
-import online.ItemComparator;
-import online.ItemSearchResult;
-import online.ItemSearchTask;
-import utils.ItemFeature;
 
 public class MySqlIndexer {
 	static final Logger LOG = Logger.getLogger(MySqlIndexer.class);
@@ -53,9 +39,7 @@ public class MySqlIndexer {
 		}
 
 		MysqlDataSource ds = new MysqlDataSource();
-		
-		LOG.info(props.getProperty("db.user"));
-		
+				
 		ds.setURL(props.getProperty("db.url"));
 		ds.setUser(props.getProperty("db.user"));
 		ds.setPassword(props.getProperty("db.passwd"));
@@ -63,148 +47,12 @@ public class MySqlIndexer {
 		return ds;
 	}
 	
-	public static void walkThroughBinFile(String path) {
-		RawDataFile datafile = new RawDataFile(path);
-		datafile.enableMmapMode();
-		
-		ItemFeature feature = new ItemFeature();
-		
-		Set<Long> set = new HashSet<Long>();
-		int dupnum = 0;
-		
-		ItemFeature src = new ItemFeature();
-		datafile.getItemFeature(10, src);
-		
-		ItemComparator.Compare comp = new ItemComparator.HammingDist();
-		
-		long start = System.currentTimeMillis();
-		int idx = 0;
-		
-		while (datafile.hasNext()) {
-			datafile.nextItemFeature(feature);
-			float sim = comp.similarity(src.embedding, feature.embedding);
-			idx++;
-			//Map<String, Object> one = datafile.next();
-			
-//			long idx = (long) one.get("_id");
-//			Long itemid = (Long) one.get("itemid");
-//			
-//			boolean notexist = set.add(itemid);
-//			if (notexist == false) {
-//				//LOG.info("HAHA " + itemid);
-//				dupnum++;
-//			}
-//			
-			//LOG.info(idx);
-			if (idx % 1000 == 0) {
-				// LOG.info(String.format("%s %s %s", idx, one.get("itemid"), one.get("category")));
-				LOG.info("Sim: " + sim);
-			}
-		}
-		LOG.info("Running time: " + (System.currentTimeMillis() - start));
-		LOG.info("DupNum: " + dupnum);
-		
-		datafile.close();
-	}
 	
-	public static PriorityQueue<ItemSearchResult> mapItemSearchTask(ItemSearchTask task) {
-		long start = System.currentTimeMillis();
-		ItemFeature feature = new ItemFeature();
-		float sim = 0.0f;
-		
-		PriorityQueue<ItemSearchResult> queue = new PriorityQueue<ItemSearchResult>(task.numResult + 1);
-		
-		while (task.datafile.hasNext()) {
-			task.datafile.nextItemFeature(feature);
-			float tmp = task.comp.similarity(task.src.embedding, feature.embedding);
-			ItemSearchResult ret = new ItemSearchResult(feature.itemId, tmp);
-			
-			queue.offer(ret);
-			if (queue.size() > task.numResult) {
-				queue.poll();
-			}
-		}
-		LOG.info(Thread.currentThread().getName() + " " + sim + " Running time: " + (System.currentTimeMillis() - start));
-		
-		return queue;
-	}
-	
-	public static PriorityQueue<ItemSearchResult> reduceItemSearchTask(PriorityQueue<ItemSearchResult> q1, PriorityQueue<ItemSearchResult> q2) {
-		int limit = q1.size();
-		for (ItemSearchResult one : q2) {
-			q1.offer(one);
-			if (q1.size() > limit) q1.poll();
-		}
-		
-		return q1;
-	}
-	
-	public static void searchInParallel() {
-		String path = "/Users/hongwang/Downloads/cvswedb_0_0.bin";
-		String path1 = "/Users/hongwang/Downloads/cvswedb_1_0.bin";
-		String path2 = "/Users/hongwang/Downloads/cvswedb_2_0.bin";
-		
-		RawDataFile datafile = new RawDataFile(path);
-		datafile.enableMmapMode();
-		RawDataFile datafile1 = new RawDataFile(path1);
-		datafile1.enableMmapMode();
-		RawDataFile datafile2 = new RawDataFile(path2);
-		datafile2.enableMmapMode();
-		
-		ItemFeature src = new ItemFeature();
-		datafile.getItemFeature(1001, src);
-		
-		ItemComparator.Compare comp = ItemComparator.HammingDist.getInstance();
-		
-		List<ItemSearchTask> searchTasks = new ArrayList<ItemSearchTask>();
-		searchTasks.add(new ItemSearchTask(datafile, src, comp, 100));
-		searchTasks.add(new ItemSearchTask(datafile1, src, comp, 100));
-		searchTasks.add(new ItemSearchTask(datafile2, src, comp, 100));
-		
-		Optional<PriorityQueue<ItemSearchResult>> results = searchTasks.parallelStream().map(task -> mapItemSearchTask(task))
-				.reduce((ret1, ret2) -> reduceItemSearchTask(ret1, ret2));
-		// LOG.info("Max" + ret.get());
-		
-		Object[] outlist = results.get().toArray();
-		Arrays.sort(outlist);
-				
-		for (Object ret : outlist) {
-			System.out.println(((ItemSearchResult)ret).sim);
-		}
-		
-		// ForkJoinPool threadPool = new ForkJoinPool(4);
-	}
-	
-	public static void main(String[] args) {
-		LOG.info(ForkJoinPool.getCommonPoolParallelism());
-		searchInParallel();
-	}
-	
-	public static void main3(String[] args) {
-		String path = "/Users/hongwang/Downloads/cvswedb_1_0.bin";
-		walkThroughBinFile(path);
-	}
-	
-	public static void main2(String[] args) {
-		// String path = "/Users/hongwang/Downloads/cvswedb_0_2.bin";
-		// walkThroughBinFile(path);
-		//indexRawDataEmbedding(path, 0);
-		
-		// "cvswedb_1_0.bin" Dup Pri Key?
-		
-		// String[] paths = {"cvswedb_2_0.bin", "cvswedb_2_1.bin", "cvswedb_2_2.bin", "cvswedb_2_3.bin"};
-		String[] paths = {"cvswedb_1_0.bin"};
-		for (String one : paths) {
-			String dir = "/Users/hongwang/Downloads/" + one;
-			indexRawDataEmbedding(dir, 1);
-		}
-	}
-	
-	public static void indexRawDataEmbedding(String path, int part) {
+	public static void indexRawDataEmbedding(int part, int category) {
 		MysqlDataSource ds = getMySQLDataSource();
 		String insert = "INSERT INTO ItemEmbedding (ItemId, Part, Category, Offset)" + " VALUES (?, ?, ?, ?)";
 
-		try (Connection conn = ds.getConnection(); RawDataFile datafile = new RawDataFile(path);
+		try (Connection conn = ds.getConnection(); RawDataFile datafile = new RawDataFile(part, category);
 				PreparedStatement preparedStmt = conn.prepareStatement(insert)) {
 
 			long idx = 0;
@@ -230,34 +78,23 @@ public class MySqlIndexer {
 				}
 			}
 			preparedStmt.executeBatch();
-			LOG.info(String.format("Total: %s for %s", idx, path));
-
+			LOG.info(String.format("Total: %s for part %s", idx, part));
 		} catch (SQLException ex) {
 			LOG.error("", ex);
 		}
-
 	}
-
-	public static void main1(String[] args) {
-
-		MysqlDataSource ds = getMySQLDataSource();
-
-		String query = "SELECT VERSION()";
-		String insert = "INSERT INTO ItemEmbedding (ItemId, Parition, Category, Offset)"
-				        + " VALUES (?, ?, ?, ?)";
-
-		try (Connection con = ds.getConnection();
-				PreparedStatement pst = con.prepareStatement(query);
-				ResultSet rs = pst.executeQuery()) {
-
-			if (rs.next()) {
-				String version = rs.getString(1);
-				System.out.println(version);
-			}
-			
-			
-		} catch (SQLException ex) {
-			LOG.error("", ex);
+	
+	public static void main2(String[] args) {
+		// String path = "/Users/hongwang/Downloads/cvswedb_0_2.bin";
+		// walkThroughBinFile(path);
+		//indexRawDataEmbedding(path, 0);
+		
+		// "cvswedb_1_0.bin" Dup Pri Key?
+		
+		// String[] paths = {"cvswedb_2_0.bin", "cvswedb_2_1.bin", "cvswedb_2_2.bin", "cvswedb_2_3.bin"};
+		for (int part = 0; part < 3; part++) {
+			for (int cate = 0; cate < 4; cate++)
+			indexRawDataEmbedding(part, cate);
 		}
 	}
 }

@@ -8,7 +8,6 @@ import java.util.PriorityQueue;
 import org.apache.log4j.Logger;
 
 import offline.RawDataFile;
-import utils.ItemFeature;
 
 public class ItemSearchScheduler implements AutoCloseable {
 	static final Logger LOG = Logger.getLogger(ItemSearchScheduler.class);
@@ -17,7 +16,6 @@ public class ItemSearchScheduler implements AutoCloseable {
 	
 	public ItemSearchScheduler() {
 		for (int cat = 0; cat < 4; cat++) {
-		//for (int cat = 0; cat < 1; cat++) {
 			List<RawDataFile> lst = new ArrayList<RawDataFile>();
 			
 			for (int part=0; part < 3; part++) {
@@ -38,7 +36,6 @@ public class ItemSearchScheduler implements AutoCloseable {
 		RawDataFile datafile = cat2dataList.get(category).get(part);
 		datafile.getItemFeature((long)ret.get("offset"), feature);
 		
-		//cat2dataList.get(category).get(part).getItemFeature((long)ret.get("offset"), feature);
 		return feature;
 	}
 	
