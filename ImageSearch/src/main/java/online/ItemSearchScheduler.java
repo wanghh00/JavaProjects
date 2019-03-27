@@ -35,6 +35,7 @@ public class ItemSearchScheduler implements AutoCloseable {
 		ItemFeature feature = new ItemFeature((long) ret.get("itemid"), category, part);
 		RawDataFile datafile = cat2dataList.get(category).get(part);
 		datafile.getItemFeature((long)ret.get("offset"), feature);
+		datafile.reset();
 		
 		return feature;
 	}

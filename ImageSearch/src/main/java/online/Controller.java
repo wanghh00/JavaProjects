@@ -19,6 +19,7 @@ public class Controller {
 	static final Logger LOG = Logger.getLogger(Controller.class);
 	
 	static final String IMG_URL_TEMPLATE = "http://37fee.http.sjc01.cdn.softlayer.net/cvswe/img/%s.jpg";
+	private static PriorityQueue<ItemSearchResult> EMPTY_RESULT = new PriorityQueue<ItemSearchResult>();
 
 	private static ItemSearchScheduler Scheduler;
 
@@ -48,13 +49,13 @@ public class Controller {
 					.map(task -> ItemSearchScheduler.mapItemSearchTask(task))
 					.reduce((ret1, ret2) -> ItemSearchScheduler.reduceItemSearchTask(ret1, ret2));
 			
-			Object[] outlist = results.get().toArray();
+			ItemSearchResult[] outlist = results.orElse(EMPTY_RESULT).toArray(new ItemSearchResult[0]);
 			Arrays.sort(outlist);
 			
 			List<Map<String, Object>> resultLst = new ArrayList<Map<String, Object>>();
-			for (int x = outlist.length - 1; x >= 0; x--) {
+			for (int x = outlist.length - 2; x >= 0; x--) {
 				Map<String, Object> obj = new HashMap<String, Object>();
-				ItemSearchResult one = (ItemSearchResult) outlist[x];
+				ItemSearchResult one = outlist[x];
 				
 				obj.put("itemId", one.itemId);
 				obj.put("score", one.sim);

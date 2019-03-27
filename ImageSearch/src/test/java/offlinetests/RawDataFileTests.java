@@ -18,20 +18,23 @@ public class RawDataFileTests {
 		
 		ItemFeature src = new ItemFeature();
 		datafile.getItemFeature(10, src);
+		datafile.reset();
 		
 		ItemComparator.Compare comp = new ItemComparator.HammingDist();
 		
 		long start = System.currentTimeMillis();
 		int idx = 0;
+		float max = 0.0f;
 		
 		while (datafile.hasNext()) {
 			datafile.nextItemFeature(feature);
 			float sim = comp.similarity(src.embedding, feature.embedding);
+			max = sim > max ? sim : max;
 			idx++;
 		
 			if (idx % 10000 == 0) {
 				// LOG.info(String.format("%s %s %s", idx, one.get("itemid"), one.get("category")));
-				LOG.info("Sim: " + sim);
+				LOG.info(String.format("Sim: %s Max: %s", sim, max));
 			}
 		}
 		LOG.info("Running time: " + (System.currentTimeMillis() - start));
